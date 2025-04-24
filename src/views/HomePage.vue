@@ -23,6 +23,9 @@
           <ion-label>{{ item }}</ion-label>
         </ion-item>
       </ion-list>
+      <div>
+        <div id="map" style="width: 100%; height: 400px;"></div>
+      </div>
     </ion-content>
   </ion-page>
 </template>
@@ -31,10 +34,26 @@
 import { ref } from 'vue';
 import { IonButton, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonAlert, IonList, IonListHeader, IonItem, IonLabel } from '@ionic/vue';
 import { CapacitorBarcodeScanner } from '@capacitor/barcode-scanner';
+import  mapboxgl  from 'mapbox-gl';
+import { onMounted } from 'vue';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
+mapboxgl.accessToken = 'pk.eyJ1Ijoia2VuZDIyNSIsImEiOiJjbTl1bDUxdmowYWxyMnZvcDZ0N3JrMnd6In0.PAXwtSzi0DdlFpzf9e0_ew';
+
+const map = ref<any>(null);
 const showAlert = ref(false);
 const alertMessage = ref('');
 const scanHistory = ref<string[]>([]); // Historial de códigos QR escaneados
+
+onMounted(() => {
+  map.value = new mapboxgl.Map({
+	container: 'map', // container ID
+	style: 'mapbox://styles/mapbox/streets-v12', // style URL
+	center: [-85.446501,10.630537], // starting position [lng, lat]
+	zoom: 9, // starting zoom
+});
+});
+
 
 async function scanBarcode() {
   try {
@@ -44,12 +63,19 @@ async function scanBarcode() {
       const content = result.ScanResult;
 
       scanHistory.value.unshift(content);
-
-      if (content.includes('@') && content.includes('.')) {
+      if(content.includes('geo:')) {
+        const coordinates = content.split(':')[1].split(',');
+        const lat = parseFloat(coordinates[0]);
+        const lng = parseFloat(coordinates[1]);
+        new mapboxgl.Marker()
+          .setLngLat([lng, lat])
+          .addTo(map.value);
+      }
+      else if (content.includes('@') && content.includes('.')) {
         window.location.href = `mailto:${content}`;
       } else if (content.startsWith('http')) {
         window.open(content, '_blank');
-      } else {
+      } else{
         alertMessage.value = content;
         showAlert.value = true;
       }
